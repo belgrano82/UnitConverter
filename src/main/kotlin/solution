@@ -1,0 +1,89 @@
+import java.util.*
+
+enum class Types {
+    LENGTH, WEIGHT, TEMPERATURE;
+
+    override fun toString(): String {
+        return name[0] + name.drop(1).toLowerCase()
+    }
+}
+
+enum class Units(val coefficient: Double, val type: Types, val names: List<String>) {
+    M(1.0, Types.LENGTH, listOf("m", "meter", "meters")),
+    KM(1000.0, Types.LENGTH, listOf("km", "kilometer", "kilometers")),
+    CM(0.01, Types.LENGTH, listOf("cm", "centimeter", "centimeters")),
+    MM(0.001, Types.LENGTH, listOf("mm", "millimeter", "millimeters")),
+    MI(1609.35, Types.LENGTH, listOf("mi", "mile", "miles")),
+    YD(0.9144, Types.LENGTH, listOf("yd", "yard", "yards")),
+    FT(0.3048, Types.LENGTH, listOf("ft", "foot", "feet")),
+    IN(0.0254, Types.LENGTH, listOf("in", "inch", "inches")),
+    G(1.0, Types.WEIGHT, listOf("g", "gram", "grams")),
+    KG(1000.0, Types.WEIGHT, listOf("kg", "kilogram", "kilograms")),
+    MG(0.001, Types.WEIGHT, listOf("mg", "milligram", "milligrams")),
+    LB(453.592, Types.WEIGHT, listOf("lb", "pound", "pounds")),
+    OZ(28.3495, Types.WEIGHT, listOf("oz", "ounce", "ounces")),
+    C(0.0, Types.TEMPERATURE, listOf("c", "degree Celsius", "degrees Celsius", "dc", "celsius")),
+    F(0.0, Types.TEMPERATURE, listOf("f", "degree Fahrenheit", "degrees Fahrenheit", "df", "fahrenheit")),
+    K(0.0, Types.TEMPERATURE, listOf("k", "Kelvin", "Kelvins"));
+
+    companion object {
+        fun getUnit(name: String): Units? =
+                values().firstOrNull { unit -> unit.names.any { it.equals(name, true) } }
+
+        fun convert(input: Double, unitSource: Units, unitTarget: Units): Double = when (unitSource to unitTarget) {
+            F to C -> (input - 32) * 5 / 9
+            C to F -> input * 9 / 5 + 32
+            C to K -> input + 273.15
+            K to C -> input - 273.15
+            K to F -> input * 9 / 5 - 459.67
+            F to K -> (input + 459.67) * 5 / 9
+            F to F, C to C, K to K -> input
+            else -> error("Unknown conversion!")
+        }
+    }
+}
+
+fun main() {
+    val scanner = Scanner(System.`in`)
+    do {
+        print("\nEnter what you want to convert (or exit): ")
+        val response = scanner.next()
+        if (response == "exit") break
+        val input = response.toDoubleOrNull()
+        if (input == null) {
+            println("Parse error")
+            scanner.nextLine()
+            continue
+        }
+        val inputUnit = readUnit(scanner)
+        val unitSource = Units.getUnit(inputUnit)
+        scanner.next()
+        val outputUnit = readUnit(scanner)
+        val unitTarget = Units.getUnit(outputUnit)
+
+        if (unitSource?.type == unitTarget?.type && unitSource != null && unitTarget != null) {
+            val output = if (unitSource.type in setOf(Types.LENGTH, Types.WEIGHT)) {
+                if (input < 0) {
+                    println("${unitSource.type} shouldn't be negative")
+                    continue
+                }
+                input * unitSource.coefficient / unitTarget.coefficient
+            } else {
+                Units.convert(input, unitSource, unitTarget)
+            }
+
+            val inputNumeral = if (input == 1.0) 1 else 2
+            val outputNumeral = if (output == 1.0) 1 else 2
+
+            println("$input ${unitSource.names[inputNumeral]} is $output ${unitTarget.names[outputNumeral]}")
+        } else {
+            println("Conversion from ${unitSource?.names?.get(2) ?: "???"} " +
+                    "to ${unitTarget?.names?.get(2) ?: "???"} is impossible")
+        }
+    } while (true)
+}
+
+private fun readUnit(scanner: Scanner): String {
+    val input = scanner.next()
+    return if (input.toLowerCase() in setOf("degree", "degrees")) input + " " + scanner.next() else input
+}
