@@ -7,7 +7,6 @@ private fun converting() {
         print("Enter what you want to convert (or exit): ")
         input = readln()
         convertResult(input)
-        println()
     }
 }
 
@@ -15,43 +14,74 @@ private fun convertResult(input: String) {
 
     if (input != "exit") {
         try {
-            val (number, measure1, transWord, measure2) = input.split(" ")
-            val amount = number.toDouble()
+            val connectors = listOf("to", "in", "convertTo")
 
-            val meas1 = findMatchingEnum(measure1)
-            val meas2 = findMatchingEnum(measure2)
+            val regexPattern = connectors.joinToString("|") { "\\b$it\\b" }.toRegex()
 
-            println(
-                when (checkPossibilityOfConversion(meas1?.get(0) ?: "???", meas2?.get(0) ?: "???")) {
-                    "weight" -> {
-                        val result = ConverterWeight().convert(amount, measure1, measure2)
-                        "$amount ${result[1]} is ${result[0]} ${result[2]}"
+            val parts = regexPattern.split(input).map { it.trim() }
+
+            if (parts.size == 2) {
+                val firstPart = parts[0].split(" ")
+                val amount = firstPart[0].toDouble()
+                val from = firstPart.drop(1).joinToString(" ")
+                val to = parts[1]
+
+                val meas1 = findMatchingEnum(from)
+                val meas2 = findMatchingEnum(to)
+
+                println(
+                    when (checkPossibilityOfConversion(meas1?.get(0) ?: "???", meas2?.get(0) ?: "???")) {
+                        "weight" -> {
+                            val result = ConverterWeight().convert(amount, from, to)
+                            if (amount < 0) "Weight shouldn't be negative" else "$amount ${result[1]} is ${result[0]} ${result[2]}\n"
+                        }
+
+                        "length" -> {
+                            val result = ConverterLength().convert(amount, from, to)
+                            if (amount < 0) "Length shouldn't be negative" else "$amount ${result[1]} is ${result[0]} ${result[2]}\n"
+                        }
+
+                        "temperature" -> {
+                            val result = ConverterTemperature().convert(amount, from, to)
+                            "$amount ${result[1]} is ${result[0]} ${result[2]}\n"
+
+                        }
+
+                        else -> "Conversion from ${meas1?.get(2) ?: "???"} to ${meas2?.get(2) ?: "???"} is impossible\n"
                     }
-                    "length" -> {
-                        val result = ConverterLength().convert(amount, measure1, measure2)
-                        "$amount ${result[1]} is ${result[0]} ${result[2]}"
-                    }
-                    else -> "Conversion from ${meas1?.get(2) ?: "???"} to ${meas2?.get(2) ?: "???"} is impossible"
-                }
-            )
+                )
+            } else {
+                println("Parse error\n")
+            }
         } catch (e: Exception) {
-            println(false)
+            println("Parse error\n")
         }
     }
 }
+
 private fun checkPossibilityOfConversion(measure1: String, measure2: String): String {
 
     val listMeasuresOfLength = MeasuresOfLength.entries.flatMap { it.names }
     val listMeasuresOfWeight = MeasureOfWeight.entries.flatMap { it.names }
+    val listMeasuresOfTemperature = MeasuresOfTemperature.entries.flatMap { it.names }
 
     return when {
         measure1 in listMeasuresOfWeight && measure2 in listMeasuresOfWeight -> "weight"
         measure1 in listMeasuresOfLength && measure2 in listMeasuresOfLength -> "length"
+        measure1 in listMeasuresOfTemperature && measure2 in listMeasuresOfTemperature -> "temperature"
         else -> ""
     }
 }
+
 private fun findMatchingEnum(value: String): List<String>? {
     MeasuresOfLength.entries.firstOrNull { value.lowercase() in it.names }?.let { return it.names }
     MeasureOfWeight.entries.firstOrNull { value.lowercase() in it.names }?.let { return it.names }
+    MeasuresOfTemperature.entries.firstOrNull { measure ->
+        measure.names.any { it.equals(value, ignoreCase = true) }
+    }.let {
+        if (it != null) {
+            return it.names
+        }
+    }
     return null
 }
